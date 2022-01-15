@@ -1,3 +1,4 @@
+import hashlib
 from tkinter import *
 from mysql import connector
 
@@ -34,10 +35,11 @@ class App(Tk):
 
     def connect_sql(self):
         self.mydb = connector.connect(
-        host="localhost",
-        user="root",
-        password="",
-        database="pb_login"
+        host="192.168.0.21",
+        port="3306",
+        user="programski_dostop",
+        password="programsko_geslo",
+        database="PB_Login"
         )
         
         self.cursor = self.mydb.cursor()
@@ -47,9 +49,14 @@ class App(Tk):
 
     def login(self):
         self.status("logging in")
-        self.cursor.execute("SELECT * FROM users;")
-        result = self.cursor.fetchall()[0]
-        self.status(f"result is {result[0]}")
+        if self.check_user_exist(self.username.get()):
+            self.cursor.execute("SELECT id FROM users WHERE name = %s AND pass = %s;", (self.username.get(), hashlib.sha256(self.password.get().encode()).hexdigest()))
+            if self.cursor.fetchall():
+                self.status("Logged in")
+            else:
+                self.status("Invalid password")
+        else:
+            self.status("User does not exist")
 
 
     def register(self):
@@ -58,8 +65,9 @@ class App(Tk):
             if self.check_user_exist(self.username.get()):
                 self.status("User allready exists")
                 return
-            self.cursor.execute("INSERT INTO users VALUES (NULL, %s, %s)", (self.username.get(),self.password.get()))
+            self.cursor.execute("INSERT INTO users VALUES (NULL, %s, %s)", (self.username.get(),hashlib.sha256(self.password.get().encode()).hexdigest()))
             self.mydb.commit()
+            self.status("Sucsessfuly registered")
 
     def check_user_exist(self, user : str):
         self.cursor.execute("SELECT * FROM users WHERE name=%s", (user,))
